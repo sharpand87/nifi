@@ -126,10 +126,8 @@ class nifi():
         # write "output" to contents of flow file
         # "output" need not be a string
 
-        self.content = output
-        self.flowFile = session.putAttribute(self.flowFile, "content", self.content)
-        self.flowFile = session.write(self.flowFile, self.outputWrite(self.flowFile))
-        self.flowFile = session.removeAttribute(self.flowFile, "content")
+        self.content = output.encode('utf-8')
+        self.flowFile = session.write(self.flowFile, self.outputWrite(str(self.content)))
 
     #---------------------------------------------------
     class nifiContent():
@@ -148,11 +146,11 @@ class nifi():
         
         # subclass to write content to flow file contents
 
-        def __init__(self, flowFile):
-            self.flowFile = flowFile
+        def __init__(self, output):
+            self.output = output
         def process(self, outputStream):
-            outputStream.write(bytearray(self.flowFile.getAttribute("content").encode("UTF-8")))
-
+            outputStream.write(str(self.output))
+    
     #---------------------------------------------------
     class getStreamContent(StreamCallback):
 
@@ -162,7 +160,7 @@ class nifi():
             pass
         def process(self, inputStream, outputStream):
             global content
-            content.stream = IOUtils.toByteArray(inputStream)
+            content.stream = IOUtils.toString(inputStream, StandardCharsets.UTF_8)
 
             #do stuff to original file:
             outputContent = content.stream
@@ -182,21 +180,22 @@ class nifi():
 n = nifi()
 
 # convert contents to string
-content = n.content.toString()
+content = n.content.stream
+n.write(content)
 
 # create child flow file with no content
-n.child()
+#n.child()
 
 # add new attribute to parent flow file
-n.putAttribute('beforeChild', 'HHHH')
+#n.putAttribute('beforeChild', 'HHHH')
 
 # create multiple child flow files with content
 # child flow files inherit all parent attributes at time of creation
-for p in content.split('A'):
+for p in content.split('\n'):
     n.child(p)
 
 # add new attribute to parent flow file
-n.putAttribute('afterChild', '123123')
+#n.putAttribute('afterChild', '123123')
 
 # push all changes to output stream
 n.commit()
